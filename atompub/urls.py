@@ -1,9 +1,11 @@
 from django.conf.urls.defaults import *
 
-urlpatterns = patterns('',
-    # Example:
-    # (r'^atompub/', include('atompub.foo.urls')),
+from atompub.testmodel.feeds import TestFeed1
 
-    # Uncomment this for admin:
-#     (r'^admin/', include('django.contrib.admin.urls')),
+urlpatterns = patterns('',
+    (r"^feeds/(.*)/$", "django.contrib.syndication.views.feed", {
+        "feed_dict": {
+            "test_1": TestFeed1,
+        }
+    }),
 )
