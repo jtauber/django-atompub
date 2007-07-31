@@ -154,3 +154,49 @@ class TestFeed2(Feed):
             if contributor.email:
                 person_dict['email'] = contributor.email
             yield person_dict
+
+
+## test feed that isn't database-backed but tests some features not used by feeds above
+
+from datetime import datetime
+
+class TestFeed3(Feed):
+    
+    feed_id = "my_id"
+    feed_title = "My Blog"
+    feed_updated = datetime.now()
+    
+    feed_extra_attrs = {"foo": "bar"}
+    
+    feed_icon = "icon_url"
+    feed_logo = "logo_url"
+    
+    feed_contributors = [{"name" : "James Tauber"}]
+    
+    feed_categories = [{"term": "test"}]
+    
+    items = [None] # dummy entry
+    
+    def item_id(self, item):
+        return "item_id"
+    
+    def item_title(self, item):
+        return "html", "<b>My</b> Entry"
+    
+    def item_updated(self, item):
+        return datetime.now()
+    
+    def item_summary(self, item):
+        return "This is a summary."
+    
+    def item_rights(self, item):
+        return "Do what you will. This is just a test."
+
+    def item_categories(self, item):
+        return [
+            {"term": "test"},
+            {"term": "test", "scheme": "http://example.com/", "label": "test label"}
+        ]
+    
+    def item_extra_attrs(self, item):
+        return {"foo": "baz"}
