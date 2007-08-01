@@ -187,6 +187,9 @@ class TestFeed3(Feed):
     def item_updated(self, item):
         return datetime.now()
     
+    def item_authors(self, item):
+        return [{"name": "Sam Pell"}]
+    
     def item_summary(self, item):
         return "This is a summary."
     
@@ -198,6 +201,9 @@ class TestFeed3(Feed):
             {"term": "test"},
             {"term": "test", "scheme": "http://example.com/", "label": "test label"}
         ]
+    
+    def item_links(self, item):
+        return [{"href": "http://example.com/blog/1/"}]
     
     def item_extra_attrs(self, item):
         return {"foo": "baz"}
@@ -222,6 +228,9 @@ class TestFeed4(Feed):
     
     def item_updated(self, item):
         return datetime.now()
+    
+    def item_links(self, item):
+        return [{"href": "http://example.com/blog/2/"}]
     
     def item_source(self, item):
         return {

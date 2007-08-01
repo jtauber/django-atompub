@@ -3,7 +3,7 @@ from django.utils.xmlutils import SimplerXMLGenerator
 GENERATOR_TEXT = 'django-atompub'
 GENERATOR_ATTR = {
     'uri': 'http://code.google.com/p/django-atompub/',
-    'version': 'r11'
+    'version': 'r13'
 }
 
 ## based on django.utils.feedgenerator.rfc3339_date
@@ -14,6 +14,8 @@ def rfc3339_date(date):
 
 ## based on django.contrib.syndication.feeds.Feed
 class Feed(object):
+    
+    VALIDATE = True
     
     
     def __init__(self, slug, feed_url):
@@ -80,7 +82,14 @@ class Feed(object):
                 extra_attrs = self.__get_dynamic_attr('item_extra_attrs', None, default={}),
             )
         
+        if self.VALIDATE:
+            feed.validate()
         return feed
+
+
+
+class ValidationError(Exception):
+    pass
 
 
 
@@ -270,3 +279,102 @@ class AtomFeed(object):
                 self.write_content(handler, item['content'])
             
             handler.endElement(u'entry')
+    
+    def validate(self):
+        
+        def validate_text_construct(obj):
+            if isinstance(obj, tuple):
+                if obj[0] not in ['text', 'html', 'xhtml']:
+                    return False
+            # @@@ no validation is done that 'html' text constructs are valid HTML
+            # @@@ no validation is done that 'xhtml' text constructs are well-formed XML or valid XHTML
+            
+            return True
+        
+        if not validate_text_construct(self.feed['title']):
+            raise ValidationError('feed title has invalid type')
+        if self.feed.get('subtitle'):
+            if not validate_text_construct(self.feed['subtitle']):
+                raise ValidationError('feed subtitle has invalid type')
+        if self.feed.get('rights'):
+            if not validate_text_construct(self.feed['rights']):
+                raise ValidationError('feed rights has invalid type')
+        
+        alternate_links = {}
+        for link in self.feed.get('links'):
+            if link.get('rel') == 'alternate' or link.get('rel') == None:
+                key = (link.get('type'), link.get('hreflang'))
+                if key in alternate_links:
+                    raise ValidationError('alternate links must have unique type/hreflang')
+                alternate_links[key] = link
+        
+        if self.feed.get('authors'):
+            feed_author = True
+        else:
+            feed_author = False
+        
+        for item in self.items:
+            if not feed_author and not item.get('authors'):
+                if item.get('source') and item['source'].get('authors'):
+                    pass
+                else:
+                    raise ValidationError('if no feed author, all entries must have author (possibly in source)')
+                
+            if not validate_text_construct(item['title']):
+                raise ValidationError('entry title has invalid type')
+            if item.get('rights'):
+                if not validate_text_construct(item['rights']):
+                    raise ValidationError('entry rights has invalid type')
+            if item.get('summary'):
+                if not validate_text_construct(item['summary']):
+                    raise ValidationError('entry summary has invalid type')
+            source = item.get('source')
+            if source:
+                if source.get('title'):
+                    if not validate_text_construct(source['title']):
+                        raise ValidationError('source title has invalid type')
+                if source.get('subtitle'):
+                    if not validate_text_construct(source['subtitle']):
+                        raise ValidationError('source subtitle has invalid type')
+                if source.get('rights'):
+                    if not validate_text_construct(source['rights']):
+                        raise ValidationError('source rights has invalid type')
+            
+            alternate_links = {}
+            for link in item.get('links'):
+                if link.get('rel') == 'alternate' or link.get('rel') == None:
+                    key = (link.get('type'), link.get('hreflang'))
+                    if key in alternate_links:
+                        raise ValidationError('alternate links must have unique type/hreflang')
+                    alternate_links[key] = link
+
+            if not item.get('content'):
+                if not alternate_links:
+                    raise ValidationError('if no content, entry must have alternate link')
+            
+            if item.get('content') and isinstance(item.get('content'), tuple):
+                content_type = item.get('content')[0].get('type')
+                if item.get('content')[0].get('src'):
+                    if item.get('content')[1]:
+                        raise ValidationError('content with src should be empty')
+                    if not item.get('summary'):
+                        raise ValidationError('content with src requires a summary too')
+                    if content_type in ['text', 'html', 'xhtml']:
+                        raise ValidationError('content with src cannot have type of text, html or xhtml')
+                if content_type:
+                    if '/' in content_type and \
+                        not content_type.startswith('text/') and \
+                        not content_type.endswith('/xml') and not content_type.endswith('+xml') and \
+                        not content_type in ['application/xml-external-parsed-entity', 'application/xml-dtd']:
+                        # @@@ check content is Base64
+                        if not item.get('summary'):
+                            raise ValidationError('content in Base64 requires a summary too')
+                    if content_type not in ['text', 'html', 'xhtml'] and '/' not in content_type:
+                        raise ValidationError('content type does not appear to be valid')
+                    
+                    # @@@ no validation is done that 'html' text constructs are valid HTML
+                    # @@@ no validation is done that 'xhtml' text constructs are well-formed XML or valid XHTML
+                    
+                    return
+            
+        return
