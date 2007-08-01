@@ -3,7 +3,7 @@ from django.utils.xmlutils import SimplerXMLGenerator
 GENERATOR_TEXT = 'django-atompub'
 GENERATOR_ATTR = {
     'uri': 'http://code.google.com/p/django-atompub/',
-    'version': 'r9'
+    'version': 'r11'
 }
 
 ## based on django.utils.feedgenerator.rfc3339_date
@@ -71,7 +71,7 @@ class Feed(object):
                 content = self.__get_dynamic_attr('item_content', item),
                 published = self.__get_dynamic_attr('item_published', item),
                 rights = self.__get_dynamic_attr('item_rights', item),
-                # @@@ source not yet implemented
+                source = self.__get_dynamic_attr('item_source', item),
                 summary = self.__get_dynamic_attr('item_summary', item),
                 authors = self.__get_dynamic_attr('item_authors', item, default=[]),
                 categories = self.__get_dynamic_attr('item_categories', item, default=[]),
@@ -117,7 +117,7 @@ class AtomFeed(object):
         self.items = []
     
     
-    def add_item(self, atom_id, title, updated, content=None, published=None, rights=None, summary=None,
+    def add_item(self, atom_id, title, updated, content=None, published=None, rights=None, source=None, summary=None,
         authors=[], categories=[], contributors=[], links=[], extra_attrs={}):
         if atom_id is None:
             raise LookupError('Feed has no item_id method')
@@ -132,6 +132,7 @@ class AtomFeed(object):
             'content': content,
             'published': published,
             'rights': rights,
+            'source': source,
             'summary': summary,
             'authors': authors,
             'categories': categories,
@@ -168,6 +169,32 @@ class AtomFeed(object):
     
     def write_category_construct(self, handler, category):
         handler.addQuickElement(u'category', '', category)
+    
+    def write_source(self, handler, data):
+        handler.startElement(u'source', {})
+        if data.get('id'):
+            handler.addQuickElement(u'id', data['id'])
+        if data.get('title'):
+            self.write_text_construct(handler, u'title', data['title'])
+        if data.get('subtitle'):
+            self.write_text_construct(handler, u'subtitle', data['subtitle'])
+        if data.get('icon'):
+            handler.addQuickElement(u'icon', data['icon'])
+        if data.get('logo'):
+            handler.addQuickElement(u'logo', data['logo'])
+        if data.get('updated'):
+            handler.addQuickElement(u'updated', rfc3339_date(data['updated']))
+        for category in data.get('categories', []):
+            self.write_category_construct(handler, category)
+        for link in data.get('links', []):
+            self.write_link_construct(handler, link)
+        for author in data.get('authors', []):
+            self.write_person_construct(handler, u'author', author)
+        for contributor in data.get('contributors', []):
+            self.write_person_construct(handler, u'contributor', contributor)
+        if data.get('rights'):
+            self.write_text_construct(handler, u'rights', data['rights'])
+        handler.endElement(u'source')
     
     def write_content(self, handler, data):
         if isinstance(data, tuple):
@@ -226,6 +253,8 @@ class AtomFeed(object):
                 handler.addQuickElement(u'published', rfc3339_date(item['published']))
             if item.get('rights'):
                 self.write_text_construct(handler, u'rights', item['rights'])
+            if item.get('source'):
+                self.write_source(handler, item['source'])
             
             for author in item['authors']:
                 self.write_person_construct(handler, u'author', author)

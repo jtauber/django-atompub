@@ -45,7 +45,7 @@ class TestFeed1(Feed):
     def item_links(self, item):
         for link in item.links.all():
             yield {'href': link.href}
-    
+
 
 
 feed_2 = AtomFeedModel.objects.get(pk=2)
@@ -98,7 +98,7 @@ class TestFeed2(Feed):
     
     def item_updated(self, item):
         return item.updated
-
+    
     def item_published(self, item):
         return item.published
     
@@ -156,6 +156,7 @@ class TestFeed2(Feed):
             yield person_dict
 
 
+
 ## test feed that isn't database-backed but tests some features not used by feeds above
 
 from datetime import datetime
@@ -191,7 +192,7 @@ class TestFeed3(Feed):
     
     def item_rights(self, item):
         return "Do what you will. This is just a test."
-
+    
     def item_categories(self, item):
         return [
             {"term": "test"},
@@ -200,3 +201,36 @@ class TestFeed3(Feed):
     
     def item_extra_attrs(self, item):
         return {"foo": "baz"}
+
+
+
+## test feed that isn't database-backed but tests the source element
+
+class TestFeed4(Feed):
+    
+    feed_id = "my_id"
+    feed_title = "My Blog"
+    feed_updated = datetime.now()
+    
+    items = [None] # dummy entry
+    
+    def item_id(self, item):
+        return "item_id"
+    
+    def item_title(self, item):
+        return "Someone Else's Entry"
+    
+    def item_updated(self, item):
+        return datetime.now()
+    
+    def item_source(self, item):
+        return {
+            "id": "source feed id",
+            "title": "Someone Else's Blog",
+            "updated": datetime.now(),
+            "authors": [{"name": "Someone Else"}],
+            "links": [{"rel": "alternate", "href": "http://example.com/another_blog/"}],
+        }
+    
+    def item_summary(self, item):
+        return "Nice article by Someone Else."
