@@ -1,10 +1,26 @@
-from django.utils.xmlutils import SimplerXMLGenerator
+from xml.sax.saxutils import XMLGenerator
+
+
 
 GENERATOR_TEXT = 'django-atompub'
 GENERATOR_ATTR = {
     'uri': 'http://code.google.com/p/django-atompub/',
-    'version': 'r13'
+    'version': 'r15'
 }
+
+
+
+## based on django.utils.xmlutils.SimplerXMLGenerator
+class SimplerXMLGenerator(XMLGenerator):
+    def addQuickElement(self, name, contents=None, attrs=None):
+        "Convenience method for adding an element with no children"
+        if attrs is None: attrs = {}
+        self.startElement(name, attrs)
+        if contents is not None:
+            self.characters(contents)
+        self.endElement(name)
+
+
 
 ## based on django.utils.feedgenerator.rfc3339_date
 def rfc3339_date(date):
@@ -14,6 +30,7 @@ def rfc3339_date(date):
 
 ## based on django.contrib.syndication.feeds.Feed
 class Feed(object):
+    
     
     VALIDATE = True
     
@@ -96,6 +113,7 @@ class ValidationError(Exception):
 ## based on django.utils.feedgenerator.SyndicationFeed and django.utils.feedgenerator.Atom1Feed
 class AtomFeed(object):
     
+    
     mime_type = 'application/atom+xml'
     ns = u'http://www.w3.org/2005/Atom'
     
@@ -150,6 +168,7 @@ class AtomFeed(object):
             'extra_attrs': extra_attrs,
         })
     
+    
     def write_text_construct(self, handler, element_name, data):
         if isinstance(data, tuple):
             text_type, text = data
@@ -162,6 +181,7 @@ class AtomFeed(object):
         else:
             handler.addQuickElement(element_name, data)
     
+    
     def write_person_construct(self, handler, element_name, person):
         handler.startElement(element_name, {})
         handler.addQuickElement(u'name', person['name'])
@@ -171,13 +191,16 @@ class AtomFeed(object):
             handler.addQuickElement(u'email', person['email'])
         handler.endElement(element_name)
     
+    
     def write_link_construct(self, handler, link):
         if 'length' in link:
             link['length'] = str(link['length'])
-        handler.addQuickElement(u'link', '', link)
+        handler.addQuickElement(u'link', None, link)
+    
     
     def write_category_construct(self, handler, category):
-        handler.addQuickElement(u'category', '', category)
+        handler.addQuickElement(u'category', None, category)
+    
     
     def write_source(self, handler, data):
         handler.startElement(u'source', {})
@@ -205,6 +228,7 @@ class AtomFeed(object):
             self.write_text_construct(handler, u'rights', data['rights'])
         handler.endElement(u'source')
     
+    
     def write_content(self, handler, data):
         if isinstance(data, tuple):
             content_dict, text = data
@@ -216,6 +240,7 @@ class AtomFeed(object):
                 handler.addQuickElement(u'content', text, content_dict)
         else:
             handler.addQuickElement(u'content', data)
+    
     
     def write(self, outfile, encoding):
         handler = SimplerXMLGenerator(outfile, encoding)
@@ -250,6 +275,7 @@ class AtomFeed(object):
         
         handler.endElement(u'feed')
     
+    
     def write_items(self, handler):
         for item in self.items:
             entry_attrs = item.get('extra_attrs', {})
@@ -279,6 +305,7 @@ class AtomFeed(object):
                 self.write_content(handler, item['content'])
             
             handler.endElement(u'entry')
+    
     
     def validate(self):
         
@@ -319,7 +346,7 @@ class AtomFeed(object):
                     pass
                 else:
                     raise ValidationError('if no feed author, all entries must have author (possibly in source)')
-                
+            
             if not validate_text_construct(item['title']):
                 raise ValidationError('entry title has invalid type')
             if item.get('rights'):
@@ -347,7 +374,7 @@ class AtomFeed(object):
                     if key in alternate_links:
                         raise ValidationError('alternate links must have unique type/hreflang')
                     alternate_links[key] = link
-
+            
             if not item.get('content'):
                 if not alternate_links:
                     raise ValidationError('if no content, entry must have alternate link')
@@ -376,5 +403,5 @@ class AtomFeed(object):
                     # @@@ no validation is done that 'xhtml' text constructs are well-formed XML or valid XHTML
                     
                     return
-            
+        
         return
