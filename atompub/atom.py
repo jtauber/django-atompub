@@ -29,13 +29,13 @@
 # 
 
 from xml.sax.saxutils import XMLGenerator
-
+from datetime import datetime
 
 
 GENERATOR_TEXT = 'django-atompub'
 GENERATOR_ATTR = {
     'uri': 'http://code.google.com/p/django-atompub/',
-    'version': 'r19'
+    'version': 'r20'
 }
 
 
@@ -55,6 +55,17 @@ class SimplerXMLGenerator(XMLGenerator):
 ## based on django.utils.feedgenerator.rfc3339_date
 def rfc3339_date(date):
     return date.strftime('%Y-%m-%dT%H:%M:%SZ')
+
+
+
+## based on django.utils.feedgenerator.get_tag_uri
+def get_tag_uri(url, date):
+    "Creates a TagURI. See http://diveintomark.org/archives/2004/05/28/howto-atom-id"
+    tag = re.sub('^http://', '', url)
+    if date is not None:
+        tag = re.sub('/', ',%s:/' % date.strftime('%Y-%m-%d'), tag, 1)
+    tag = re.sub('#', '/', tag)
+    return 'tag:' + tag
 
 
 
@@ -148,14 +159,13 @@ class AtomFeed(object):
     ns = u'http://www.w3.org/2005/Atom'
     
     
-    def __init__(self, atom_id, title, updated, icon=None, logo=None, rights=None, subtitle=None,
+    def __init__(self, atom_id, title, updated=None, icon=None, logo=None, rights=None, subtitle=None,
         authors=[], categories=[], contributors=[], links=[], extra_attrs={}, hide_generator=False):
         if atom_id is None:
             raise LookupError('Feed has no feed_id field')
         if title is None:
             raise LookupError('Feed has no feed_title field')
-        if updated is None:
-            raise LookupError('Feed has no feed_updated field')
+        # if updated == None, we'll calculate it
         self.feed = {
             'id': atom_id,
             'title': title,
@@ -197,6 +207,18 @@ class AtomFeed(object):
             'links': links,
             'extra_attrs': extra_attrs,
         })
+    
+    
+    def latest_updated(self):
+        """
+        Returns the latest item's updated or the current time if there are no items.
+        """
+        updates = [item['updated'] for item in self.items]
+        if len(updates) > 0:
+            updates.sort()
+            return updates[-1]
+        else:
+            return datetime.now() # @@@ really we should allow a feed to define its "start" for this case
     
     
     def write_text_construct(self, handler, element_name, data):
@@ -287,7 +309,10 @@ class AtomFeed(object):
             handler.addQuickElement(u'icon', self.feed['icon'])
         if self.feed.get('logo'):
             handler.addQuickElement(u'logo', self.feed['logo'])
-        handler.addQuickElement(u'updated', rfc3339_date(self.feed['updated']))
+        if self.feed['updated']:
+            handler.addQuickElement(u'updated', rfc3339_date(self.feed['updated']))
+        else:
+            handler.addQuickElement(u'updated', rfc3339_date(self.latest_updated()))
         for category in self.feed['categories']:
             self.write_category_construct(handler, category)
         for link in self.feed['links']:
@@ -435,3 +460,69 @@ class AtomFeed(object):
                     return
         
         return
+
+
+
+class LegacySyndicationFeed(AtomFeed):
+    """
+    Provides an SyndicationFeed-compatible interface in its __init__ and
+    add_item but is really a new AtomFeed object.
+    """
+    
+    def __init__(self, title, link, description, language=None, author_email=None,
+            author_name=None, author_link=None, subtitle=None, categories=None,
+            feed_url=None, feed_copyright=None):
+        
+        atom_id = link
+        title = title
+        updated = None # will be calculated
+        rights = feed_copyright
+        subtitle = subtitle
+        author_dict = {'name': author_name}
+        if author_link:
+            author_dict['uri'] = author_uri
+        if author_email:
+            author_dict['email'] = author_email
+        authors = [author_dict]
+        categories = [{'term': term} for term in categories]
+        links = [{'rel': 'alternate', 'href': link}]
+        if feed_url:
+            links.append({'rel': 'self', 'href': feed_url})
+        if language:
+            extra_attrs = {'xml:lang': language}
+        else:
+            extra_attrs = {}
+        
+        # description ignored (as with Atom1Feed)
+        
+        AtomFeed.__init__(self, atom_id, title, updated, rights=rights, subtitle=subtitle,
+                authors=authors, categories=categories, links=links, extra_attrs=extra_attrs)
+    
+    
+    def add_item(self, title, link, description, author_email=None,
+            author_name=None, author_link=None, pubdate=None, comments=None,
+            unique_id=None, enclosure=None, categories=(), item_copyright=None):
+        
+        if unique_id:
+            atom_id = unique_id
+        else:
+            atom_id = get_tag_uri(link, pubdate)
+        title = title
+        updated = pubdate
+        if item_copyright:
+            rights = item_copyright
+        if description:
+            summary = 'html', description
+        author_dict = {'name': author_name}
+        if author_link:
+            author_dict['uri'] = author_uri
+        if author_email:
+            author_dict['email'] = author_email
+        authors = [author_dict]
+        categories = [{'term': term} for term in categories]
+        links = [{'rel': 'alternate', 'href': link}]
+        if enclosure:
+            links.append({'rel': 'enclosure', 'href': enclosure.url, 'length': enclosure.length, 'type': enclosure.mime_type})
+        
+        AtomFeed.add_item(self, atom_id, title, updated, rights=None, summary=None,
+                authors=[], categories=[], links=[])
