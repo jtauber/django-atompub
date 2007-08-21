@@ -35,7 +35,7 @@ from datetime import datetime
 GENERATOR_TEXT = 'django-atompub'
 GENERATOR_ATTR = {
     'uri': 'http://code.google.com/p/django-atompub/',
-    'version': 'r20'
+    'version': 'r21'
 }
 
 
@@ -470,7 +470,7 @@ class LegacySyndicationFeed(AtomFeed):
     """
     
     def __init__(self, title, link, description, language=None, author_email=None,
-            author_name=None, author_link=None, subtitle=None, categories=None,
+            author_name=None, author_link=None, subtitle=None, categories=[],
             feed_url=None, feed_copyright=None):
         
         atom_id = link
@@ -484,7 +484,8 @@ class LegacySyndicationFeed(AtomFeed):
         if author_email:
             author_dict['email'] = author_email
         authors = [author_dict]
-        categories = [{'term': term} for term in categories]
+        if categories:
+            categories = [{'term': term} for term in categories]
         links = [{'rel': 'alternate', 'href': link}]
         if feed_url:
             links.append({'rel': 'self', 'href': feed_url})
@@ -501,7 +502,7 @@ class LegacySyndicationFeed(AtomFeed):
     
     def add_item(self, title, link, description, author_email=None,
             author_name=None, author_link=None, pubdate=None, comments=None,
-            unique_id=None, enclosure=None, categories=(), item_copyright=None):
+            unique_id=None, enclosure=None, categories=[], item_copyright=None):
         
         if unique_id:
             atom_id = unique_id
@@ -511,8 +512,12 @@ class LegacySyndicationFeed(AtomFeed):
         updated = pubdate
         if item_copyright:
             rights = item_copyright
+        else:
+            rights = None
         if description:
             summary = 'html', description
+        else:
+            summary = None
         author_dict = {'name': author_name}
         if author_link:
             author_dict['uri'] = author_uri
@@ -524,5 +529,5 @@ class LegacySyndicationFeed(AtomFeed):
         if enclosure:
             links.append({'rel': 'enclosure', 'href': enclosure.url, 'length': enclosure.length, 'type': enclosure.mime_type})
         
-        AtomFeed.add_item(self, atom_id, title, updated, rights=None, summary=None,
-                authors=[], categories=[], links=[])
+        AtomFeed.add_item(self, atom_id, title, updated, rights=rights, summary=summary,
+                authors=authors, categories=categories, links=links)
