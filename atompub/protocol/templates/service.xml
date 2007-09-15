@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding='utf-8'?>
+<service xmlns="http://www.w3.org/2007/app" xmlns:atom="http://www.w3.org/2005/Atom">
+{% for workspace in workspaces %}
+  <workspace>
+    <atom:title>{{ workspace.title }}</atom:title>
+{% for collection in workspace.collections.all %}    
+    <collection href="{{ collection.href }}">
+      <atom:title>{{ collection.title }}</atom:title>
+      {% if collection.category_set.all %}<categories>
+{% for category in collection.category_set.all %}        <category term="{{ category.term }}"{% if category.scheme %} scheme="{{ category.scheme }}"{% endif %}{% if category.label %} label="{{ category.label }}"{% endif %} />
+{% endfor %}      </categories>{% endif %}
+{% for accept in collection.accept_set.all %}      <accept>{{ accept.text }}</accept>
+{% endfor %}    </collection>
+    {% endfor %}
+  </workspace>
+{% endfor %}
+</service>
