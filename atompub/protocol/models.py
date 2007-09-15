@@ -1,4 +1,5 @@
 from django.contrib.sites.models import Site
+from django.contrib.auth.models import User
 
 from django.db import models
 
@@ -52,16 +53,32 @@ class Category(models.Model):
     scheme = models.URLField(null=True, verify_exists=False, blank=True)
     label = models.CharField(maxlength=100, null=True, blank=True)
     
+    class Meta:
+        verbose_name_plural = "categories"
+
     class Admin:
         list_display = ("collection", "term", "scheme", "label")
 
 
-class Entry(models.Model):
+class MemberEntry(models.Model):
     
     collection = models.ForeignKey(Collection)
-
-
-
-class MediaLink(models.Model):
     
-    collection = models.ForeignKey(Collection)
+    title = models.CharField(maxlength=100)
+    creator = models.ForeignKey(User)
+    edited = models.DateTimeField()
+    
+    def get_absolute_url(self):
+        return "/entry/%s/" % self.id
+    
+    def href(self):
+        return "http://%s%s" % (Site.objects.get_current().domain, self.get_absolute_url())
+    
+    def __str__(self):
+        return self.title
+    
+    class Meta:
+        verbose_name_plural = "member entries"
+    
+    class Admin:
+        pass
