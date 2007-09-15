@@ -35,7 +35,7 @@ from datetime import datetime
 GENERATOR_TEXT = 'django-atompub'
 GENERATOR_ATTR = {
     'uri': 'http://code.google.com/p/django-atompub/',
-    'version': 'r21'
+    'version': 'r33'
 }
 
 
@@ -102,24 +102,33 @@ class Feed(object):
         return attr
     
     
-    def get_feed(self, url=None):
+    def get_feed(self, extra_params=None):
+        
+        if extra_params:
+            try:
+                obj = self.get_object(extra_params.split('/'))
+            except (AttributeError, LookupError):
+                raise LookupError('Feed does not exist')
+        else:
+            obj = None
+        
         feed = AtomFeed(
-            atom_id = self.__get_dynamic_attr('feed_id', None),
-            title = self.__get_dynamic_attr('feed_title', None),
-            updated = self.__get_dynamic_attr('feed_updated', None),
-            icon = self.__get_dynamic_attr('feed_icon', None),
-            logo = self.__get_dynamic_attr('feed_logo', None),
-            rights = self.__get_dynamic_attr('feed_rights', None),
-            subtitle = self.__get_dynamic_attr('feed_subtitle', None),
-            authors = self.__get_dynamic_attr('feed_authors', None, default=[]),
-            categories = self.__get_dynamic_attr('feed_categories', None, default=[]),
-            contributors = self.__get_dynamic_attr('feed_contributors', None, default=[]),
-            links = self.__get_dynamic_attr('feed_links', None, default=[]),
-            extra_attrs = self.__get_dynamic_attr('feed_extra_attrs', None),
-            hide_generator = self.__get_dynamic_attr('hide_generator', None, default=False)
+            atom_id = self.__get_dynamic_attr('feed_id', obj),
+            title = self.__get_dynamic_attr('feed_title', obj),
+            updated = self.__get_dynamic_attr('feed_updated', obj),
+            icon = self.__get_dynamic_attr('feed_icon', obj),
+            logo = self.__get_dynamic_attr('feed_logo', obj),
+            rights = self.__get_dynamic_attr('feed_rights', obj),
+            subtitle = self.__get_dynamic_attr('feed_subtitle', obj),
+            authors = self.__get_dynamic_attr('feed_authors', obj, default=[]),
+            categories = self.__get_dynamic_attr('feed_categories', obj, default=[]),
+            contributors = self.__get_dynamic_attr('feed_contributors', obj, default=[]),
+            links = self.__get_dynamic_attr('feed_links', obj, default=[]),
+            extra_attrs = self.__get_dynamic_attr('feed_extra_attrs', obj),
+            hide_generator = self.__get_dynamic_attr('hide_generator', obj, default=False)
         )
         
-        items = self.__get_dynamic_attr('items', None)
+        items = self.__get_dynamic_attr('items', obj)
         if items is None:
             raise LookupError('Feed has no items field')
         
