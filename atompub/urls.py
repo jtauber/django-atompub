@@ -1,12 +1,19 @@
 from django.conf.urls.defaults import *
 
 from atompub.protocol.views import service
+from atompub.protocol.feeds import CollectionFeed
 
 from atompub.testmodel.feeds import TestFeed1, TestFeed2, TestFeed3, TestFeed4
 
 urlpatterns = patterns('',
     
     (r"^service/$", service),
+    
+    (r"^(collection/\d+)/$", "django.contrib.syndication.views.feed", {
+        "feed_dict": {
+            "collection": CollectionFeed,
+        }
+    }),
     
     # for testing
     (r"^feeds/(.*)/$", "django.contrib.syndication.views.feed", {
